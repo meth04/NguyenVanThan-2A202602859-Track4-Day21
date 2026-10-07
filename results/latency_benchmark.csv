@@ -1,0 +1,5 @@
+dataset,frame_id,n_points,repeats,latency_p50_ms,latency_p95_ms,latency_mean_ms
+synthetic,000000,23953,30,3.9923,4.8380,4.0323
+kitti,000011,108004,30,16.7834,19.9738,16.9773
+kitti,000049,113691,30,18.7340,20.5086,18.3942
+nuscenes,scene-0103_010,34720,30,5.4024,5.9990,5.3364

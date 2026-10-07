@@ -32,7 +32,16 @@ def velo_to_cam(points_xyz: np.ndarray, calib: KittiCalib) -> np.ndarray:
       3. Trả về 3 cột đầu.
     Tự kiểm: một điểm velodyne (10, 0, 0) phải có z_cam ~ 10 (phía trước camera).
     """
-    raise NotImplementedError("TODO(CP2): cài đặt velo_to_cam")
+    pts = np.asarray(points_xyz, dtype=np.float64)
+    if pts.ndim != 2 or pts.shape[1] < 3:
+        raise ValueError(f"velo_to_cam cần mảng (N, >=3), nhận được shape {pts.shape}")
+    n = pts.shape[0]
+    # (N, 4): [x, y, z, 1]
+    homo = np.hstack([pts[:, :3], np.ones((n, 1), dtype=np.float64)])
+    # T_cam_velo là (4, 4). Muốn biến đổi theo hàng (điểm là vector hàng) thì
+    # phải nhân bên phải với chuyển vị: (N,4) @ (4,4).T = (N,4).
+    cam = homo @ calib.T_cam_velo.T
+    return cam[:, :3]
 
 
 def cam_to_image(points_cam: np.ndarray, P2: np.ndarray, image_shape: tuple[int, ...],
@@ -52,7 +61,29 @@ def cam_to_image(points_cam: np.ndarray, P2: np.ndarray, image_shape: tuple[int,
       3. Chia cho s để có (u, v). Chỉ chia với điểm có depth > min_depth.
       4. Lọc theo kích thước ảnh image_shape[:2] = (H, W).
     """
-    raise NotImplementedError("TODO(CP2): cài đặt cam_to_image")
+    pts = np.asarray(points_cam, dtype=np.float64)
+    if pts.ndim != 2 or pts.shape[1] < 3:
+        raise ValueError(f"cam_to_image cần mảng (N, >=3), nhận được shape {pts.shape}")
+    n = pts.shape[0]
+    H, W = int(image_shape[0]), int(image_shape[1])
+
+    # (1) Loại điểm NaN/Inf trước khi làm bất cứ phép toán nào.
+    finite = np.isfinite(pts).all(axis=1)
+
+    # (2) Toạ độ đồng nhất rồi nhân P2 (3x4): (N,4) @ (4,3) = (N,3).
+    homo = np.hstack([pts[:, :3], np.ones((n, 1), dtype=np.float64)])
+    proj = homo @ np.asarray(P2, dtype=np.float64).T      # [s*u, s*v, s]
+
+    depth = proj[:, 2]
+    # (3) Chỉ chia khi depth đủ lớn, tránh chia cho ~0 hoặc số âm (điểm sau lưng).
+    valid = finite & (depth > min_depth)
+    uv = np.full((n, 2), np.nan, dtype=np.float64)
+    uv[valid] = proj[valid, :2] / depth[valid, None]
+
+    # (4) Giữ lại điểm rơi vào trong khung ảnh (biên trên mở, biên dưới đóng).
+    inside = valid & (uv[:, 0] >= 0) & (uv[:, 0] < W) & (uv[:, 1] >= 0) & (uv[:, 1] < H)
+
+    return uv[inside], depth[inside], inside
 
 
 def project_velo_to_image(points: np.ndarray, calib: KittiCalib, image_shape: tuple[int, ...]):

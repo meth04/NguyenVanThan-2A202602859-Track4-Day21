@@ -1,0 +1,5 @@
+dataset,frame_id,clean_nmi,detect_yaw_deg,rel_drop_at_detect,detected
+synthetic,000000,0.318189,0.500000,0.111915,True
+kitti,000011,0.035009,0.250000,0.128289,True
+kitti,000049,0.021164,0.500000,0.058667,True
+nuscenes,scene-0103_010,0.075039,,,False
